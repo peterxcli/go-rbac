@@ -1,0 +1,13 @@
+http-server:
+  hostname: 0.0.0.0
+  port: 8200
+
+database:
+  host: localhost
+  port: 1433
+  user: SA
+  password: me@wm3ow
+  dbname: rbac
+
+secrect:
+  access_secret: 1234567890
