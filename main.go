@@ -38,6 +38,8 @@ func main() {
 
 	db.AutoMigrate(&models.User{}, &models.Role{}, &models.Permission{})
 
+	models.Permission{}.CheckConstraints(db)
+
 	r := routers.SetupRouter(db)
 
 	addr := fmt.Sprintf("%s:%s", config.Config.HttpServer.Hostname, config.Config.HttpServer.Port)
