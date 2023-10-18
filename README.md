@@ -4,43 +4,43 @@
 
 ```go
 var (
-	Viewer = "GET"
-	Editor = "^(POST|PUT|PATCH)$"
-	Admin  = "*"
+    Viewer = "GET"
+    Editor = "^(POST|PUT|PATCH)$"
+    Admin  = "*"
 )
 
 type User struct {
-	ID    uint   `gorm:"primaryKey;autoIncrement"`
-	Name  string `gorm:"type:varchar(255);not null;uniqueIndex"`
-	Roles []Role `gorm:"many2many:user_roles;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+    ID    uint   `gorm:"primaryKey;autoIncrement"`
+    Name  string `gorm:"type:varchar(255);not null;uniqueIndex"`
+    Roles []Role `gorm:"many2many:user_roles;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
 type Role struct {
-	ID          uint         `gorm:"primaryKey;autoIncrement"`
-	Name        string       `gorm:"type:varchar(255);not null;uniqueIndex"`
-	Permissions []Permission `gorm:"many2many:role_permissions;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+    ID          uint         `gorm:"primaryKey;autoIncrement"`
+    Name        string       `gorm:"type:varchar(255);not null;uniqueIndex"`
+    Permissions []Permission `gorm:"many2many:role_permissions;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
 type Permission struct {
-	ID uint `gorm:"primaryKey;autoIncrement"`
+    ID uint `gorm:"primaryKey;autoIncrement"`
 
-	// GET, POST
-	Action string `gorm:"type:varchar(255);not null;index:idx_action_route;check:action_check"`
+    // GET, POST
+    Action string `gorm:"type:varchar(255);not null;index:idx_action_route;check:action_check"`
 
-	// e.g. /api/v1/user, /api/v1/user/*
-	Route string `gorm:"type:varchar(255);not null;index:idx_action_route;check:route_check"`
+    // e.g. /api/v1/user, /api/v1/user/*
+    Route string `gorm:"type:varchar(255);not null;index:idx_action_route;check:route_check"`
 
-	// Allow or Deny
-	Allowed bool `gorm:"not null"`
+    // Allow or Deny
+    Allowed bool `gorm:"not null"`
 }
 
 func (Permission) TableName() string {
-	return "permissions"
+    return "permissions"
 }
 
 func (Permission) CheckConstraints(db *gorm.DB) {
-	db.Exec("ALTER TABLE permissions ADD CONSTRAINT action_check CHECK (Action IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'))")
-	db.Exec("ALTER TABLE permissions ADD CONSTRAINT route_check CHECK (Route LIKE '/%')")
+    db.Exec("ALTER TABLE permissions ADD CONSTRAINT action_check CHECK (Action IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'))")
+    db.Exec("ALTER TABLE permissions ADD CONSTRAINT route_check CHECK (Route LIKE '/%')")
 }
 ```
 
@@ -62,35 +62,35 @@ func (Permission) CheckConstraints(db *gorm.DB) {
 
 ```go
 func CheckPermission(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		matchedAny := false
-		userId := c.MustGet("userId").(uint) // get the userId which is this after token authentication
-		var user models.User
-		db.Preload("Roles").Preload("Roles.Permissions").Where("ID = ?", userId).First(&user)
+    return func(c *gin.Context) {
+        matchedAny := false
+        userId := c.MustGet("userId").(uint) // get the userId which is this after token authentication
+        var user models.User
+        db.Preload("Roles").Preload("Roles.Permissions").Where("ID = ?", userId).First(&user)
 
-		for _, role := range user.Roles {
-			for _, permission := range role.Permissions {
-				if matches(c.Request.Method, permission.Action) && matches(c.Request.URL.Path, permission.Route) {
-					matchedAny = true
-					if !permission.Allowed {
-						c.AbortWithStatusJSON(403, gin.H{"error": "Permission denied"})
-						return
-					}
-				}
-			}
-		}
-		if !matchedAny {
-			c.AbortWithStatusJSON(403, gin.H{"error": "Permission denied"})
-			return
-		}
-		c.Next()
-	}
+        for _, role := range user.Roles {
+            for _, permission := range role.Permissions {
+                if matches(c.Request.Method, permission.Action) && matches(c.Request.URL.Path, permission.Route) {
+                    matchedAny = true
+                    if !permission.Allowed {
+                        c.AbortWithStatusJSON(403, gin.H{"error": "Permission denied"})
+                        return
+                    }
+                }
+            }
+        }
+        if !matchedAny {
+            c.AbortWithStatusJSON(403, gin.H{"error": "Permission denied"})
+            return
+        }
+        c.Next()
+    }
 }
 
 // case insensitive regex matching
 func matches(requestValue, patternValue string) (matched bool) {
-	// case insensitive: https://stackoverflow.com/a/9655186
-	matched, _ = regexp.MatchString("(?i)"+patternValue, requestValue)
-	return
+    // case insensitive: https://stackoverflow.com/a/9655186
+    matched, _ = regexp.MatchString("(?i)"+patternValue, requestValue)
+    return
 }
 ```
