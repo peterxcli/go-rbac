@@ -26,12 +26,10 @@ func CheckPermission(db *gorm.DB) gin.HandlerFunc {
 				}
 			}
 		}
-
 		if !matchedAny {
 			c.AbortWithStatusJSON(403, gin.H{"error": "Permission denied"})
 			return
 		}
-
 		c.Next()
 	}
 }
